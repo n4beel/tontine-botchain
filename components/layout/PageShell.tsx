@@ -8,85 +8,76 @@ import { footerLinks } from "@/lib/botchain/chain";
 import BuiltOnBotChain from "@/components/botchain/BuiltOnBotChain";
 import { app } from "@/lib/app-config";
 
-export type NavItem = { href: string; label: string };
-
 interface PageShellProps {
   children: React.ReactNode;
-  nav?: NavItem[];
   title?: string;
-  description?: string;
+  subtitle?: string;
 }
 
-/**
- * App frame.
- *
- * A top bar rather than ghost-pay's 220px rail. These apps have two or three screens, and a rail
- * that wide spends a fifth of a laptop window — and all of a phone — on three links. The bar is
- * the same at every width, which also means there is no drawer, no focus trap and no hamburger to
- * get wrong.
- *
- * Height is `100dvh` rather than `100vh`. On mobile Safari and Chrome, `100vh` is the viewport
- * with the browser chrome *retracted*, so a `h-screen` layout with `overflow-hidden` pushes its
- * own footer under the address bar and the user cannot scroll to it.
- */
-export default function PageShell({ children, nav = [], title, description }: PageShellProps) {
-  const links = footerLinks();
+export default function PageShell({ children, title, subtitle }: PageShellProps) {
+  const currentPath = usePathname();
+  const chainLinks = footerLinks();
+
+  const navigation = [
+    { label: "Roll Call", href: "/" },
+    { label: "New Tontine", href: "/new" },
+    { label: "My Games", href: "/me" },
+  ];
+
   return (
-    <div
-      className="flex flex-col overflow-x-hidden"
-      style={{ minHeight: "100dvh", background: "var(--bg-base)" }}
-    >
-      <header
-        className="sticky top-0 z-30 flex-shrink-0"
-        style={{
-          borderBottom: "1px solid var(--border-subtle)",
-          background: "var(--bg-surface)",
-        }}
-      >
-        <div className="mx-auto w-full max-w-[880px] px-4 md:px-6">
-          <div className="flex items-center gap-3 py-2.5">
-            <Link href="/" className="flex items-center gap-2 flex-shrink-0 no-underline">
-              <span
-                className="w-2 h-2 flex-shrink-0"
-                style={{ background: "var(--accent)" }}
-                aria-hidden="true"
-              />
-              <span
-                className="text-[14px] font-semibold tracking-[-0.01em]"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {app.name}
-              </span>
+    <div className="min-h-screen flex flex-col bg-[var(--bg-base)] text-[var(--text-primary)]">
+      {/* Header bar */}
+      <header className="border-b border-[var(--border-default)] bg-[var(--bg-surface)] sticky top-0 z-40">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <Link href="/" className="flex items-center gap-2.5 no-underline">
+              <span className="text-2xl" aria-hidden="true">⏱️</span>
+              <div>
+                <span className="font-heading font-bold text-xl text-[var(--accent)] tracking-tight block leading-tight">
+                  {app.name}
+                </span>
+                <span className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-mono block">
+                  Last One Standing
+                </span>
+              </div>
             </Link>
 
-            <div className="flex-1" />
-            <NetworkBadge />
-            <div className="w-[150px] md:w-[180px] flex-shrink-0">
-              <ConnectButton />
-            </div>
+            <nav className="hidden sm:flex items-center gap-2">
+              {navigation.map((n) => (
+                <Link
+                  key={n.href}
+                  href={n.href}
+                  className={`px-3 py-1 text-xs uppercase font-heading font-bold tracking-wider transition-colors ${
+                    currentPath === n.href
+                      ? "bg-[var(--accent)] text-[var(--accent-ink)]"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]"
+                  }`}
+                >
+                  {n.label}
+                </Link>
+              ))}
+            </nav>
           </div>
 
-          {nav.length > 0 && <Nav items={nav} />}
+          <div className="flex items-center gap-3">
+            <NetworkBadge />
+            <ConnectButton />
+          </div>
         </div>
       </header>
 
-      <main className="flex-1 mx-auto w-full max-w-[880px] px-4 py-6 md:px-6 md:py-8">
-        {(title || description) && (
-          <div className="mb-6">
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-8">
+        {(title || subtitle) && (
+          <div className="mb-6 border-b border-[var(--border-subtle)] pb-4">
             {title && (
-              <h1
-                className="text-[20px] md:text-[24px] font-semibold tracking-[-0.015em]"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <h1 className="font-heading text-2xl sm:text-3xl font-bold text-[var(--text-primary)] tracking-tight">
                 {title}
               </h1>
             )}
-            {description && (
-              <p
-                className="mt-1.5 text-[13px] leading-relaxed"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                {description}
+            {subtitle && (
+              <p className="mt-1 text-sm text-[var(--text-muted)] leading-relaxed">
+                {subtitle}
               </p>
             )}
           </div>
@@ -94,86 +85,39 @@ export default function PageShell({ children, nav = [], title, description }: Pa
         {children}
       </main>
 
-      {/*
-        The ecosystem footer is required, not decorative. BOT Chain's project assessment criteria
-        ask that the footer or an ecosystem-partnership section carry the BOT Chain name and link
-        to both botchain.ai and the explorer; a site without it is not counted, however complete
-        the product is. It lives in the shared shell so no project can ship missing it.
-      */}
-      <footer
-        className="flex-shrink-0 mx-auto w-full max-w-[880px] px-4 py-6 md:px-6"
-        style={{ borderTop: "1px solid var(--border-subtle)" }}
-      >
-        <div className="flex flex-col gap-3">
-          <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-            {app.tagline}
-          </p>
+      {/* Shared Footer Contract: exactly 3 links */}
+      <footer className="mt-auto border-t border-[var(--border-default)] bg-[var(--bg-surface)] py-6 text-xs text-[var(--text-muted)]">
+        <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <BuiltOnBotChain />
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <span className="inline-flex items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="inline-block w-2 h-2 flex-shrink-0"
-                style={{ background: "var(--accent)", borderRadius: "1px" }}
-              />
-              <BuiltOnBotChain
-                className="text-[11px] uppercase tracking-[0.06em]"
-                style={{ color: "var(--text-secondary)" }}
-              />
-            </span>
-
+          <div className="flex items-center gap-6">
             <a
-              href={links.site}
+              href={chainLinks.contract}
               target="_blank"
               rel="noreferrer"
-              className="text-[11px] underline"
-              style={{ color: "var(--text-tertiary)" }}
+              className="hover:text-[var(--text-primary)] transition-colors underline font-mono text-xs"
             >
-              botchain.ai
+              Contract
             </a>
-
             <a
-              href={links.explorer}
+              href={chainLinks.site}
               target="_blank"
               rel="noreferrer"
-              className="text-[11px] underline"
-              style={{ color: "var(--text-tertiary)" }}
+              className="hover:text-[var(--text-primary)] transition-colors underline font-mono text-xs"
             >
-              BOT Chain Explorer
+              BOT Chain
+            </a>
+            <a
+              href={chainLinks.explorer}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-[var(--text-primary)] transition-colors underline font-mono text-xs"
+            >
+              Explorer
             </a>
           </div>
         </div>
       </footer>
     </div>
-  );
-}
-
-/**
- * Horizontal tabs. `aria-current` rather than colour alone marks the active one, and the active
- * check is an exact match so `/` does not light up on every page.
- */
-function Nav({ items }: { items: NavItem[] }) {
-  const pathname = usePathname();
-
-  return (
-    <nav className="flex items-center gap-1 -mb-px overflow-x-auto">
-      {items.map((item) => {
-        const active = pathname === item.href;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-current={active ? "page" : undefined}
-            className="nav-link flex items-center px-3 py-2 text-[12px] uppercase tracking-[0.04em] no-underline whitespace-nowrap"
-            style={{
-              color: active ? "var(--accent)" : "var(--text-secondary)",
-              borderBottom: `1px solid ${active ? "var(--accent)" : "transparent"}`,
-            }}
-          >
-            {item.label}
-          </Link>
-        );
-      })}
-    </nav>
   );
 }

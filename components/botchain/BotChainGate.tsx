@@ -140,11 +140,11 @@ export default function BotChainGate({
       <Notice title="Contract not deployed">
         <p className="mb-3">
           No contract address is configured for {activeBotChain.name}. Deploy with{" "}
-          <code style={{ color: "var(--text-secondary)" }}>contracts/script/Deploy.s.sol</code>,
+          <code style={{ color: "var(--text-muted)" }}>contracts/script/Deploy.s.sol</code>,
           then set the{" "}
-          <code style={{ color: "var(--text-secondary)" }}>NEXT_PUBLIC_CONTRACT_{chainId}</code>{" "}
+          <code style={{ color: "var(--text-muted)" }}>NEXT_PUBLIC_CONTRACT_{chainId}</code>{" "}
           and{" "}
-          <code style={{ color: "var(--text-secondary)" }}>
+          <code style={{ color: "var(--text-muted)" }}>
             NEXT_PUBLIC_DEPLOY_BLOCK_{chainId}
           </code>{" "}
           variables the script prints.
@@ -170,7 +170,7 @@ function Notice({ title, children }: { title: string; children: React.ReactNode 
       <Panel>
         <p
           className="text-[11px] uppercase tracking-[0.04em] mb-2"
-          style={{ color: "var(--text-secondary)" }}
+          style={{ color: "var(--text-muted)" }}
         >
           {title}
         </p>

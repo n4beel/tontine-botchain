@@ -17,7 +17,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             className="text-[11px] font-medium uppercase tracking-[0.04em]"
-            style={{ color: "var(--text-secondary)" }}
+            style={{ color: "var(--text-muted)" }}
           >
             {label}
           </label>
@@ -43,7 +43,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           {suffix && (
             <div
               className="absolute right-3 text-sm"
-              style={{ color: "var(--text-secondary)" }}
+              style={{ color: "var(--text-muted)" }}
             >
               {suffix}
             </div>

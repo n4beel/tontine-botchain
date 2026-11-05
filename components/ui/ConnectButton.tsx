@@ -115,7 +115,7 @@ export default function ConnectButton() {
         style={{
           borderRadius: "2px",
           border: "1px solid var(--border-default)",
-          color: "var(--text-secondary)",
+          color: "var(--text-muted)",
           background: "transparent",
         }}
         disabled

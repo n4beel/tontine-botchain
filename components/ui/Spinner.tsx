@@ -14,7 +14,7 @@ export default function Spinner({ size = 24, label }: SpinnerProps) {
       {label && (
         <span
           className="text-[12px] tracking-[0.04em] uppercase"
-          style={{ color: "var(--text-secondary)" }}
+          style={{ color: "var(--text-muted)" }}
         >
           {label}
         </span>

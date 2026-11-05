@@ -11,7 +11,7 @@ const inlineStyles: Record<BadgeVariant, CSSProperties> = {
   pending: { background: "#F5A6231A", border: "1px solid #F5A62340", color: "var(--warning)" },
   confirmed: { background: "#1DB9541A", border: "1px solid #1DB95440", color: "var(--success)" },
   error: { background: "#E53E3E1A", border: "1px solid #E53E3E40", color: "var(--danger)" },
-  default: { background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" },
+  default: { background: "var(--bg-elevated)", border: "1px solid var(--border-subtle)", color: "var(--text-muted)" },
 };
 
 export default function Badge({ variant = "default", children, className = "", style, ...props }: BadgeProps) {

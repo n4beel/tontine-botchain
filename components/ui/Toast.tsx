@@ -65,12 +65,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 {t.title}
               </RadixToast.Title>
               {t.description && (
-                <RadixToast.Description className="text-[12px] text-[var(--text-secondary)]">
+                <RadixToast.Description className="text-[12px] text-[var(--text-muted)]">
                   {t.description}
                 </RadixToast.Description>
               )}
             </div>
-            <RadixToast.Close className="ml-auto text-[var(--text-tertiary)] hover:text-[var(--text-secondary)] text-sm">
+            <RadixToast.Close className="ml-auto text-[var(--text-tertiary)] hover:text-[var(--text-muted)] text-sm">
               ×
             </RadixToast.Close>
           </RadixToast.Root>

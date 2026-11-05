@@ -1,29 +1,45 @@
-import { HTMLAttributes } from "react";
+"use client";
 
-interface PanelProps extends HTMLAttributes<HTMLDivElement> {
-  elevated?: boolean;
-  noPadding?: boolean;
+import { ReactNode } from "react";
+
+interface TontineRosterBoxProps {
+  children: ReactNode;
+  heading?: string;
+  badge?: string;
+  className?: string;
+  highlighted?: boolean;
 }
 
 export default function Panel({
-  elevated,
-  noPadding,
   children,
+  heading,
+  badge,
   className = "",
-  style,
-  ...props
-}: PanelProps) {
+  highlighted = false,
+}: TontineRosterBoxProps) {
   return (
-    <div
-      className={["rounded-none", noPadding ? "" : "p-5", className].join(" ")}
-      style={{
-        background: elevated ? "var(--bg-elevated)" : "var(--bg-surface)",
-        border: "1px solid var(--border-subtle)",
-        ...style,
-      }}
-      {...props}
+    <section
+      className={`border p-5 transition-all bg-[var(--bg-surface)] ${
+        highlighted
+          ? "border-[var(--accent)] shadow-sm"
+          : "border-[var(--border-default)]"
+      } ${className}`}
     >
-      {children}
-    </div>
+      {(heading || badge) && (
+        <div className="flex items-center justify-between pb-3 mb-4 border-b border-[var(--border-subtle)]">
+          {heading && (
+            <h3 className="font-heading text-base font-bold text-[var(--text-primary)] uppercase tracking-wider">
+              {heading}
+            </h3>
+          )}
+          {badge && (
+            <span className="font-mono text-[11px] uppercase tracking-wider px-2 py-0.5 border border-[var(--border-default)] bg-[var(--bg-elevated)] text-[var(--text-muted)] font-medium">
+              {badge}
+            </span>
+          )}
+        </div>
+      )}
+      <div>{children}</div>
+    </section>
   );
 }

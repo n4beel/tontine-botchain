@@ -59,7 +59,7 @@ export default function NetworkBadge() {
       style={{
         borderRadius: "2px",
         border: `1px solid ${warn ? "var(--warning)" : "var(--border-default)"}`,
-        color: warn ? "var(--warning)" : "var(--text-secondary)",
+        color: warn ? "var(--warning)" : "var(--text-muted)",
       }}
       title={title}
     >
