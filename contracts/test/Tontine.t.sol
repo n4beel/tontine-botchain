@@ -552,21 +552,35 @@ contract TontineTest is Test {
     assertEq(tontine.MAX_LEAD(), 30 days);
     assertEq(tontine.MAX_PAGE(), 50);
 
-    // Latest pagination bounds
+    // Exact min stake (0.01 ether) accepted
     uint64 startsAt = uint64(block.timestamp) + LEAD;
     vm.prank(creator);
-    tontine.open{value: STAKE}(GAME_NAME, STAKE, startsAt, PERIOD_SECS, PERIODS);
+    tontine.open{value: 0.01 ether}(GAME_NAME, 0.01 ether, startsAt, PERIOD_SECS, PERIODS);
 
+    // Below min stake reverts
+    vm.prank(creator);
+    vm.expectRevert(Tontine.BadParams.selector);
+    tontine.open{value: 0.01 ether - 1}(GAME_NAME, 0.01 ether - 1, startsAt, PERIOD_SECS, PERIODS);
+
+    // knockable on invalid ID returns false
+    assertEq(tontine.knockable(0, creator), false);
+    assertEq(tontine.knockable(999, creator), false);
+
+    // Latest pagination bounds with 2 games
     (uint256[] memory ids, ) = tontine.latest(0, 10);
     assertEq(ids.length, 1);
 
     (uint256[] memory emptyIds, ) = tontine.latest(1, 10);
     assertEq(emptyIds.length, 0);
 
-    // Standing view
-    (uint8 curP, uint64 cMask, uint64 endsAt) = tontine.standing(1, uint64(block.timestamp));
-    assertEq(curP, 0);
-    assertEq(cMask, 0);
-    assertEq(endsAt, startsAt + uint64(PERIODS) * uint64(PERIOD_SECS));
+    // Standing view at startsAt and endsAt
+    uint64 endsAt = startsAt + uint64(PERIODS) * uint64(PERIOD_SECS);
+    (uint8 curPAtStart, uint64 cMaskAtStart, ) = tontine.standing(1, startsAt);
+    assertEq(curPAtStart, 0);
+    assertEq(cMaskAtStart, 0);
+
+    (uint8 curPAtEnd, uint64 cMaskAtEnd, ) = tontine.standing(1, endsAt);
+    assertEq(curPAtEnd, PERIODS);
+    assertEq(cMaskAtEnd, (uint64(1) << PERIODS) - 1);
   }
 }
