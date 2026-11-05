@@ -104,7 +104,7 @@ describe("Tontine integration tests against local Anvil", () => {
 
     // Get current anvil time
     const block = await publicClient.getBlock();
-    const startsAt = block.timestamp + 3600n; // 1 hour lead
+    const startsAt = block.timestamp + 3700n; // > 1 hour lead
 
     // 1. Creator opens game
     const openHash = await deployerWallet.writeContract({
