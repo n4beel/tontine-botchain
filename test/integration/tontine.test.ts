@@ -6,12 +6,23 @@ import {
   http,
   parseEther,
   formatEther,
+  defineChain,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { TONTINE_ABI } from "../../lib/botchain/abi";
 
 const ANVIL_PORT = 8668;
 const RPC_URL = `http://127.0.0.1:${ANVIL_PORT}`;
+
+const localChain = defineChain({
+  id: 31337,
+  name: "Anvil Local",
+  nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: {
+    default: { http: [RPC_URL] },
+    public: { http: [RPC_URL] },
+  },
+});
 
 const deployerAccount = privateKeyToAccount("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
 const playerAAccount = privateKeyToAccount("0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d");
@@ -22,21 +33,25 @@ describe("Tontine integration tests against local Anvil", () => {
   let contractAddress: `0x${string}`;
 
   const publicClient = createPublicClient({
+    chain: localChain,
     transport: http(RPC_URL),
   });
 
   const deployerWallet = createWalletClient({
     account: deployerAccount,
+    chain: localChain,
     transport: http(RPC_URL),
   });
 
   const playerAWallet = createWalletClient({
     account: playerAAccount,
+    chain: localChain,
     transport: http(RPC_URL),
   });
 
   const playerBWallet = createWalletClient({
     account: playerBAccount,
+    chain: localChain,
     transport: http(RPC_URL),
   });
 
@@ -130,13 +145,11 @@ describe("Tontine integration tests against local Anvil", () => {
     expect(gData.alive).toBe(3);
 
     // 3. Fast-forward to start of period 0 (warp to startsAt + 10)
-    await publicClient.request({
-      // @ts-ignore
+    await (publicClient as any).request({
       method: "evm_setNextBlockTimestamp",
       params: [Number(startsAt + 10n)],
     });
-    await publicClient.request({
-      // @ts-ignore
+    await (publicClient as any).request({
       method: "evm_mine",
       params: [],
     });
@@ -159,13 +172,11 @@ describe("Tontine integration tests against local Anvil", () => {
     await publicClient.waitForTransactionReceipt({ hash: cPlayerAP0 });
 
     // 4. Fast-forward to period 1 (period 0 has ended)
-    await publicClient.request({
-      // @ts-ignore
+    await (publicClient as any).request({
       method: "evm_setNextBlockTimestamp",
       params: [Number(startsAt + 3600n + 10n)],
     });
-    await publicClient.request({
-      // @ts-ignore
+    await (publicClient as any).request({
       method: "evm_mine",
       params: [],
     });
@@ -214,13 +225,11 @@ describe("Tontine integration tests against local Anvil", () => {
     await publicClient.waitForTransactionReceipt({ hash: cPlayerAP1 });
 
     // 5. Fast-forward to period 2
-    await publicClient.request({
-      // @ts-ignore
+    await (publicClient as any).request({
       method: "evm_setNextBlockTimestamp",
       params: [Number(startsAt + 2n * 3600n + 10n)],
     });
-    await publicClient.request({
-      // @ts-ignore
+    await (publicClient as any).request({
       method: "evm_mine",
       params: [],
     });
@@ -243,13 +252,11 @@ describe("Tontine integration tests against local Anvil", () => {
     await publicClient.waitForTransactionReceipt({ hash: cPlayerAP2 });
 
     // 6. Fast-forward past game end (endsAt = startsAt + 3 * 3600)
-    await publicClient.request({
-      // @ts-ignore
+    await (publicClient as any).request({
       method: "evm_setNextBlockTimestamp",
       params: [Number(startsAt + 3n * 3600n + 20n)],
     });
-    await publicClient.request({
-      // @ts-ignore
+    await (publicClient as any).request({
       method: "evm_mine",
       params: [],
     });

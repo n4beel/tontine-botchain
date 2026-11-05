@@ -91,14 +91,16 @@ export default function PageShell({ children, title, subtitle }: PageShellProps)
           <BuiltOnBotChain />
 
           <div className="flex items-center gap-6">
-            <a
-              href={chainLinks.contract}
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-[var(--text-primary)] transition-colors underline font-mono text-xs"
-            >
-              Contract
-            </a>
+            {chainLinks.contract && (
+              <a
+                href={chainLinks.contract}
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-[var(--text-primary)] transition-colors underline font-mono text-xs"
+              >
+                Contract
+              </a>
+            )}
             <a
               href={chainLinks.site}
               target="_blank"
