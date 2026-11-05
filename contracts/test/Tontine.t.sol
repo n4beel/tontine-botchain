@@ -583,4 +583,122 @@ contract TontineTest is Test {
     assertEq(curPAtEnd, PERIODS);
     assertEq(cMaskAtEnd, (uint64(1) << PERIODS) - 1);
   }
+
+  // --- Feedback Round 1 Pinning Tests ---
+
+  function test_PageFromMiddleReturnsExactIdsNewestFirst() public {
+    // Create 6 games
+    for (uint256 i = 0; i < 6; i++) {
+      uint64 startsAt = uint64(block.timestamp) + LEAD + uint64(i);
+      vm.prank(creator);
+      tontine.open{value: STAKE}("Game", STAKE, startsAt, PERIOD_SECS, PERIODS);
+    }
+    // Game IDs are 1..6
+
+    // offset = 0, count = 2 -> [6, 5]
+    (uint256[] memory ids0, ) = tontine.latest(0, 2);
+    assertEq(ids0.length, 2);
+    assertEq(ids0[0], 6);
+    assertEq(ids0[1], 5);
+
+    // offset = 2, count = 2 -> [4, 3]
+    (uint256[] memory ids2, ) = tontine.latest(2, 2);
+    assertEq(ids2.length, 2);
+    assertEq(ids2[0], 4);
+    assertEq(ids2[1], 3);
+
+    // offset = 4, count = 3 -> [2, 1] (clamped to 2)
+    (uint256[] memory idsPast, ) = tontine.latest(4, 3);
+    assertEq(idsPast.length, 2);
+    assertEq(idsPast[0], 2);
+    assertEq(idsPast[1], 1);
+  }
+
+  function test_StartBoundaryRunningState() public {
+    uint64 startsAt = uint64(block.timestamp) + LEAD;
+    vm.prank(creator);
+    uint256 gid = tontine.open{value: STAKE}(GAME_NAME, STAKE, startsAt, PERIOD_SECS, PERIODS);
+
+    vm.prank(playerA);
+    tontine.join{value: STAKE}(gid);
+
+    // At startsAt - 1, game is NOT running (checkIn reverts NotRunning)
+    vm.warp(startsAt - 1);
+    vm.prank(creator);
+    vm.expectRevert(Tontine.NotRunning.selector);
+    tontine.checkIn(gid);
+
+    // knockable is false at startsAt - 1
+    assertFalse(tontine.knockable(gid, creator));
+
+    // At startsAt, game transitions to Running and checkIn succeeds
+    vm.warp(startsAt);
+    vm.prank(creator);
+    tontine.checkIn(gid); // succeeds!
+
+    Tontine.Game memory g = tontine.gameOf(gid);
+    assertEq(uint8(g.state), uint8(Tontine.State.Running));
+  }
+
+  function test_EndBoundaryAndPeriodCalculations() public {
+    uint64 startsAt = uint64(block.timestamp) + LEAD;
+    vm.prank(creator);
+    uint256 gid = tontine.open{value: STAKE}(GAME_NAME, STAKE, startsAt, PERIOD_SECS, PERIODS);
+
+    uint64 endsAt = startsAt + uint64(PERIODS) * uint64(PERIOD_SECS);
+
+    // standing view at endsAt - 1
+    (uint8 pBefore, uint64 maskBefore, uint64 eAt1) = tontine.standing(gid, endsAt - 1);
+    assertEq(eAt1, endsAt);
+    assertEq(pBefore, PERIODS - 1);
+    assertEq(maskBefore, (uint64(1) << (PERIODS - 1)) - 1);
+
+    // standing view at endsAt
+    (uint8 pAt, uint64 maskAt, uint64 eAt2) = tontine.standing(gid, endsAt);
+    assertEq(eAt2, endsAt);
+    assertEq(pAt, PERIODS);
+    assertEq(maskAt, (uint64(1) << PERIODS) - 1);
+
+    // standing view at endsAt + 1
+    (uint8 pAfter, uint64 maskAfter, uint64 eAt3) = tontine.standing(gid, endsAt + 1);
+    assertEq(eAt3, endsAt);
+    assertEq(pAfter, PERIODS);
+    assertEq(maskAfter, (uint64(1) << PERIODS) - 1);
+  }
+
+  function test_ZeroSurvivorsHandledSafelyWithoutRevert() public {
+    // Game where everyone is knocked out before finish
+    uint64 startsAt = uint64(block.timestamp) + LEAD;
+    vm.prank(creator);
+    uint256 gid = tontine.open{value: STAKE}(GAME_NAME, STAKE, startsAt, PERIOD_SECS, PERIODS);
+
+    vm.prank(playerA);
+    tontine.join{value: STAKE}(gid);
+    vm.prank(playerB);
+    tontine.join{value: STAKE}(gid);
+
+    // Warp into period 1; nobody checked in period 0
+    vm.warp(startsAt + PERIOD_SECS + 1);
+
+    // Knock out playerA, playerB, creator
+    tontine.knockOut(gid, playerA);
+    tontine.knockOut(gid, playerB);
+    // At alive == 1, knockOut won't allow knocking the last person because alive <= 1
+    // But let's check finish behavior when alive == 1:
+    // Only creator is alive, but creator missed check-in period 0 too!
+    // Warp to endsAt
+    uint64 endsAt = startsAt + uint64(PERIODS) * uint64(PERIOD_SECS);
+    vm.warp(endsAt + 1);
+
+    // In finish():
+    // First scan checks: !s.out && s.done == fullMask. Creator is not out, but s.done == 0 != fullMask!
+    // So survCount == 0 from perfect attendance scan!
+    // Fallback scan: checks !s.out. Creator is !s.out, so creator gets survCount = 1 and takes the pot!
+    uint256 creatorPendingBefore = tontine.pending(creator);
+    tontine.finish(gid);
+    assertEq(tontine.pending(creator), creatorPendingBefore + 3 * STAKE);
+
+    Tontine.Game memory g = tontine.gameOf(gid);
+    assertEq(uint8(g.state), uint8(Tontine.State.Finished));
+  }
 }

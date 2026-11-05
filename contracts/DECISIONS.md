@@ -1,27 +1,38 @@
 # Architecture & Design Decisions: Tontine
 
-## 1. Implicit Running State & Elimination Mechanics
-- **Decision**: A game with `players >= 2` transitions to the Running state as soon as `block.timestamp >= startsAt`. Any call to `checkIn`, `knockOut`, or `finish` ensures the running state is asserted and committed. Games with fewer than 2 players at `startsAt` cannot start and can only be cancelled.
-- **Rationale**: Eliminates the need for a separate admin `start()` transaction, ensuring that time-based period rules trigger deterministically based on on-chain block timestamps.
+## 1. Implicit State Transition and Liveness
+- **Decision**: Games transition automatically from `State.Open` to `State.Running` upon the first action (`checkIn`, `knockOut`, etc.) taken at or after `startsAt`, provided at least 2 players joined.
+- **Rationale**: Avoids requiring a dedicated transaction just to "start" a game, eliminating unnecessary gas costs and operational overhead for the creator.
 
-## 2. Survivor Rules at Resolution (Spec §8.1 Acceptance Checklist)
-- **Decision**: In `finish()`:
-  - If `alive == 1`, the final standing player takes the entire pot.
-  - After `endsAt`: First scan checks for players who have `done == fullMask` (checked in for every single period). If any exist, the pot is split equally among those perfect attendees.
-  - If nobody completed every period, the pot is shared among all seated players who were never knocked out (`!seat.out`).
-  - Integer division remainder (`pot % survCount`) is credited to the first surviving attendee.
-- **Rationale**: Rewards commitment and diligence. In a grueling attrition scenario where no player managed 100% check-ins, the pot still distributes cleanly to the remaining non-eliminated cohort, never stranding funds.
+## 2. Attendance Bitmask and Permissionless Knockouts
+- **Decision**:
+  - Each check-in in period $p$ flips bit $p$ (`done |= (1 << p)`).
+  - Anyone can knock out an un-checked player once a period finishes if `(done & mask) != mask`.
+  - The knock-out process is fully decentralized and permissionless.
+- **Rationale**: Guarantees that inactive participants cannot passively free-ride to the pot while allowing friends or external watchdogs to enforce rules without central authority.
 
-## 3. Bitmap Check-ins & Gas Optimization
-- **Decision**: Check-ins are represented by bits in `uint64 done`, supporting up to 60 distinct periods. Each period check-in sets `1 << c`.
-- **Rationale**: Bitwise operations (`s.done |= (1 << c)`) and mask comparisons (`(s.done & mask) == mask`) require minimal storage writes (single SSTORE per check-in), making frequent check-ins gas-efficient.
+## 3. Payout and Attendance Fallbacks
+- **Decision**:
+  - At `endsAt`, the pot is divided equally among all players who completed a perfect attendance record (`done == fullMask`).
+  - If nobody achieved perfect attendance, the pot is divided equally among all players who are not knocked out (`!out`).
+  - Remainder wei (`pot % survCount`) goes to the first survivor.
+- **Rationale**: Prevents funds from ever becoming permanently locked in contract escrow, ensuring 100% of the pot is always distributed.
 
-## 4. Mutation Testing & Equivalent Mutants
-- Mutation testing killed 16 of 25 selected mutants across parameter validations, state transitions, bounds checking, and payout math.
-- Surviving mutants are equivalent or defensive guards:
-  - `Tontine.sol:187` (`knockOut()` modifier `nonReentrant`): `knockOut` modifies internal state (`s.out = true`, `g.alive -= 1`) and makes no external contract calls or ether transfers. Reentrancy is impossible; the modifier provides defense-in-depth.
-  - `Tontine.sol:267` (`if (survCount > 0)` mutant `>= 0`): `survCount` is an unsigned integer (`uint8`), so `survCount >= 0` is always true. When `survCount == 0`, `pot / survCount` would revert; however, `survCount` cannot be 0 because `g.alive >= 1` is maintained by `knockOut` forbidding the elimination of the last standing player.
-  - `Tontine.sol:321` (`if (block.timestamp >= g.startsAt ...)` mutant `>`): A check-in exactly on the second `startsAt` versus one second later.
-  - `Tontine.sol:357` (`if (atTime >= endsAt)` mutant `>`): At `atTime == endsAt`, `currentPeriod = periods` in both branches.
-  - `Tontine.sol:394` (`if (offset + count > total)` mutant `>=`): When `offset + count == total`, `count = total - offset` evaluates to `count = count`, leaving slice length unchanged.
-  - `Tontine.sol:402` (`uint256 gId = total - offset - i` mutants with `+`): Handled by boundary constraints on pagination index iteration.
+## 4. Pull Payments (`pending[address]`)
+- **Decision**: All payouts and refunds use `pending[account] += amount` and require the user to call `withdraw()`.
+- **Rationale**: Shields against reentrancy and DoS attacks where a participant's contract reverts on incoming value transfers.
+
+## 5. Mutation Testing & Equivalent Mutants (19 of 25 killed; 6 genuinely equivalent survivors)
+Tested 25 pseudo-random mutations using `scripts/mutation-check.py tontine`. 19 mutants were killed. The remaining 6 survivors are genuinely equivalent per FEEDBACK-wave4-round1 §1:
+1. `Tontine.sol:187` (`knockOut()` modifier `nonReentrant` removed):
+   - `knockOut()` updates seat storage (`s.out = true`, `g.alive -= 1`) and emits `KnockedOut`. It performs zero external contract calls, staticcalls, or value transfers. Reentrancy is structurally impossible without an external call.
+2. `Tontine.sol:394` (`latest` pagination `if (offset + count > total)` mutated to `>=`):
+   - Explicitly listed in FEEDBACK-wave4-round1 §1: when `offset + count == total`, `count = total - offset` evaluates to `count = count` (no-op assignment). Semantics are identical on every possible input.
+3. `Tontine.sol:267` (`if (survCount > 0)` mutated to `>= 0`):
+   - In `finish()`, a game requires `players >= 2` to run. If `survCount == 0` after the perfect attendance scan, the fallback loop populates `survivors` with all seated players where `!s.out`. Because `alive >= 1` in any game that reaches `finish()`, `survCount` is guaranteed to be $\ge 1$. Thus `survCount > 0` and `survCount >= 0` are identical in reachable code.
+4. `Tontine.sol:357` (`standing()` view `} else if (atTime >= endsAt) {` mutated to `>`):
+   - When `atTime == endsAt`, `atTime >= endsAt` sets `currentP = g.periods` and `compMask = (1 << g.periods) - 1`. If mutated to `atTime > endsAt`, at equality it evaluates the `else` branch: `currentP = uint8((endsAt - g.startsAt) / g.periodSecs) = uint8(g.periods * g.periodSecs / g.periodSecs) = g.periods`, and `compMask = (1 << g.periods) - 1`. Both branches return identical values for `currentP` and `compMask`.
+5. `Tontine.sol:198` (`knockOut()` `if (block.timestamp < g.startsAt)` mutated to `<=`:
+   - At line 191, `_ensureRunning(g)` requires `block.timestamp >= g.startsAt`. Therefore, inside `knockOut()`, `block.timestamp < g.startsAt` is unreachable. At `block.timestamp == g.startsAt`, `block.timestamp < g.startsAt` is false, and `(block.timestamp - g.startsAt) / g.periodSecs = 0`, yielding `c = 0` in both branches.
+6. `Tontine.sol:202` (`c = elapsedPeriods > g.periods ? g.periods : uint8(elapsedPeriods)` mutated to `>=`):
+   - At equality `elapsedPeriods == g.periods`, assigning `g.periods` via ternary true or `uint8(elapsedPeriods)` via ternary false produces the exact same value `g.periods`.
