@@ -48,6 +48,16 @@ const menuContentStyle = {
   boxShadow: "0 8px 24px rgba(0, 0, 0, 0.28)",
 } as const;
 
+// Header chips (address, network, install/switch prompts) sit on whatever the app's header is, and some headers are dark
+// while the page tokens (--text-primary, --border-default) are dark ink. They get their own opaque surface instead, from
+// the menu tokens, which are defined for every theme and contrast-checked against each other (check-ui-contract.py).
+const chipStyle = {
+  borderRadius: "2px",
+  border: "1px solid var(--menu-border)",
+  background: "var(--menu-bg)",
+  color: "var(--menu-fg)",
+} as const;
+
 const menuItemClass =
   "flex items-center gap-3 px-4 py-2.5 text-[13px] cursor-pointer outline-none transition-colors data-[highlighted]:[background:var(--menu-hover-bg)]";
 
@@ -112,12 +122,7 @@ export default function ConnectButton() {
     return (
       <button
         className="w-full px-3 py-1.5 text-[11px] font-medium tracking-[0.02em] uppercase"
-        style={{
-          borderRadius: "2px",
-          border: "1px solid var(--border-default)",
-          color: "var(--text-muted)",
-          background: "transparent",
-        }}
+        style={chipStyle}
         disabled
       >
         Connect Wallet
@@ -149,14 +154,14 @@ export default function ConnectButton() {
           className="w-full"
           onClick={handleSwitch}
           loading={isSwitching}
-          style={{ borderColor: "var(--warning)", color: "var(--warning)" }}
+          style={{ ...chipStyle, borderColor: "var(--warning)", color: "var(--warning)" }}
         >
           Switch to {activeBotChain.name}
         </Button>
-        <div className="flex items-center justify-between gap-2 px-0.5">
+        <div className="flex items-center justify-between gap-2 px-1.5 py-0.5" style={chipStyle}>
           <span
             className="text-[10px] font-mono truncate"
-            style={{ color: "var(--text-tertiary)" }}
+            style={{ color: "var(--menu-muted)" }}
             title={address}
           >
             {connector?.name ?? "Connected"}
@@ -168,7 +173,7 @@ export default function ConnectButton() {
             style={{
               background: "transparent",
               border: "none",
-              color: "var(--text-tertiary)",
+              color: "var(--menu-muted)",
               cursor: "pointer",
             }}
           >
@@ -185,7 +190,7 @@ export default function ConnectButton() {
         <DropdownMenu.Trigger asChild>
           <button
             className="w-full flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-colors"
-            style={{ borderRadius: "2px", border: "1px solid var(--border-default)" }}
+            style={chipStyle}
           >
             <span
               className="w-1.5 h-1.5 rounded-full flex-shrink-0"
@@ -193,7 +198,7 @@ export default function ConnectButton() {
             />
             <span
               className="font-mono text-[12px] truncate"
-              style={{ color: "var(--text-primary)" }}
+              style={{ color: "var(--menu-fg)" }}
             >
               {truncate(address)}
             </span>
@@ -253,9 +258,9 @@ export default function ConnectButton() {
         className="w-full inline-flex items-center justify-center gap-2 px-3 py-1.5 text-[11px] font-medium tracking-[0.02em] uppercase no-underline"
         style={{
           borderRadius: "2px",
+          background: "var(--menu-bg)",
           border: "1px solid var(--warning)",
           color: "var(--warning)",
-          background: "transparent",
         }}
         title="No wallet extension found in this browser"
       >
