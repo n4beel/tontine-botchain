@@ -52,9 +52,11 @@ export default function NewGamePage() {
 
       const currentBlock = await publicClient.getBlock();
       // The contract checks the start against the block timestamp at mining time, which is
-      // later than the latest block read here. A ten-minute margin covers that gap (block age plus time spent in the wallet prompt); the
-      // cap keeps a 30-day lead inside the contract's maximum.
-      const wanted = currentBlock.timestamp + BigInt(600) + leadSecs;
+      // later than the block read here by however long the wallet prompt stays open (10 minutes
+      // was seen). So a lead near the one-hour minimum is lifted to 1.5 hours; longer leads
+      // already have that room. Capped at the contract's 30-day maximum.
+      const effectiveLead = leadSecs < BigInt(LIMITS.MIN_LEAD + 1800) ? BigInt(LIMITS.MIN_LEAD + 1800) : leadSecs;
+      const wanted = currentBlock.timestamp + effectiveLead;
       const cap = currentBlock.timestamp + BigInt(LIMITS.MAX_LEAD);
       const startsAt = wanted > cap ? cap : wanted;
 
@@ -147,7 +149,7 @@ export default function NewGamePage() {
                   className="p-2 border border-[var(--border-default)] bg-[var(--bg-overlay)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] font-mono"
                 />
                 <span className="text-[10px] text-[var(--text-tertiary)]">
-                  Minimum 1 hour, maximum 30 days (720 hrs). Game becomes Running after this window. About ten minutes are added to cover confirmation time.
+                  Minimum 1 hour, maximum 30 days (720 hrs). Game becomes Running after this window. A lead under 1.5 hours is raised to 1.5 hours so the transaction can't be rejected while you confirm it.
                 </span>
               </div>
 
