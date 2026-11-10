@@ -51,7 +51,12 @@ export default function NewGamePage() {
       const periods = parseInt(periodsCount, 10);
 
       const currentBlock = await publicClient.getBlock();
-      const startsAt = currentBlock.timestamp + leadSecs;
+      // The contract checks the start against the block timestamp at mining time, which is
+      // later than the latest block read here. A ten-minute margin covers that gap (block age plus time spent in the wallet prompt); the
+      // cap keeps a 30-day lead inside the contract's maximum.
+      const wanted = currentBlock.timestamp + BigInt(600) + leadSecs;
+      const cap = currentBlock.timestamp + BigInt(LIMITS.MAX_LEAD);
+      const startsAt = wanted > cap ? cap : wanted;
 
       const hash = await walletClient.writeContract({
         address: contractAddress,
@@ -142,7 +147,7 @@ export default function NewGamePage() {
                   className="p-2 border border-[var(--border-default)] bg-[var(--bg-overlay)] text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] font-mono"
                 />
                 <span className="text-[10px] text-[var(--text-tertiary)]">
-                  Minimum 1 hour, maximum 30 days (720 hrs). Game becomes Running after this window.
+                  Minimum 1 hour, maximum 30 days (720 hrs). Game becomes Running after this window. About ten minutes are added to cover confirmation time.
                 </span>
               </div>
 
